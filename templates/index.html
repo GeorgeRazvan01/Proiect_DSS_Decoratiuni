@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Vânzări Decorațiuni</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Dashboard Vânzări Decorațiuni</h1>
+
+    <!-- Canvas pentru graficul de vânzări pe tip de decor -->
+    <h2>Vânzări pe tip de decor</h2>
+    <label>Data de început: <input type="date" id="start_date"></label>
+    <label>Data de sfârșit: <input type="date" id="end_date"></label>
+    <button onclick="fetchSalesByTypeAndTime()">Afișează Vânzările</button>
+    <canvas id="salesChart" width="400" height="200"></canvas>
+
+    <!-- Canvas pentru graficul preferințelor clienților -->
+    <h2>Preferințele clienților</h2>
+    <canvas id="preferencesChart" width="400" height="200"></canvas>
+
+    <script>
+        // Funcție pentru a prelua și afișa vânzările pe tip de decor și perioadă
+        async function fetchSalesByTypeAndTime() {
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+
+            try {
+                const response = await fetch(`/api/sales_by_type_and_time?start_date=${startDate}&end_date=${endDate}`);
+                const data = await response.json();
+
+                const labels = data.map(item => item.type);
+                const salesData = data.map(item => item.sales_count);
+
+                const ctx = document.getElementById('salesChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Număr Vânzări',
+                            data: salesData,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Eroare la preluarea datelor din API:", error);
+            }
+        }
+
+        // Funcție pentru a prelua și afișa preferințele clienților
+        async function fetchCustomerPreferences() {
+            try {
+                const response = await fetch('/api/customer_preferences');
+                const data = await response.json();
+
+                const occupations = [...new Set(data.map(item => item.occupation))];
+                const decorations = [...new Set(data.map(item => item.decoration_type))];
+
+                // Construim datele pentru grafic
+                const datasets = decorations.map(decoration => ({
+                    label: decoration,
+                    data: occupations.map(occupation => {
+                        const item = data.find(d => d.occupation === occupation && d.decoration_type === decoration);
+                        return item ? item.sales_count : 0;
+                    }),
+                    backgroundColor: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 200, 0.5)`
+                }));
+
+                const ctx = document.getElementById('preferencesChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: occupations,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { stacked: true },
+                            y: { beginAtZero: true, stacked: true }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Eroare la preluarea datelor din API:", error);
+            }
+        }
+
+        // Inițializăm graficul pentru preferințele clienților la încărcarea paginii
+        fetchCustomerPreferences();
+    </script>
+</body>
+</html>
